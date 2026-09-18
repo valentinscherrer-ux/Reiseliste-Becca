@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4f1eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Reiseliste">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <title>Reiseliste</title>
+  <style>
+    :root{
+      --bg:#f4f1eb;
+      --card:#ffffff;
+      --ink:#1f2420;
+      --muted:#6b716b;
+      --line:#dedbd4;
+      --accent:#5d745e;
+      --accent-soft:#e5ece5;
+      --danger:#8b4a45;
+      --shadow:0 10px 28px rgba(30,34,30,.08);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      background:var(--bg);
+      color:var(--ink);
+      -webkit-font-smoothing:antialiased;
+    }
+    .wrap{
+      width:min(760px,100%);
+      margin:0 auto;
+      padding:18px 14px 110px;
+    }
+    header{padding:8px 4px 14px}
+    h1{font-size:28px;line-height:1.1;margin:0 0 8px}
+    .sub{color:var(--muted);font-size:15px}
+    .progress-card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:16px;
+      box-shadow:var(--shadow);
+      margin-bottom:14px;
+    }
+    .progress-row{display:flex;justify-content:space-between;gap:12px;align-items:end}
+    .progress-big{font-size:22px;font-weight:750}
+    .progress-small{font-size:13px;color:var(--muted)}
+    .track{height:10px;border-radius:999px;background:#e8e6e0;overflow:hidden;margin-top:12px}
+    .bar{height:100%;width:0;background:var(--accent);transition:width .2s ease}
+    .section{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:16px;
+      overflow:hidden;
+      margin:12px 0;
+      box-shadow:0 5px 18px rgba(30,34,30,.05);
+    }
+    .section-head{
+      width:100%;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      min-height:58px;
+      padding:12px 14px;
+      border:0;
+      background:transparent;
+      color:inherit;
+      text-align:left;
+      font:inherit;
+      cursor:pointer;
+    }
+    .section-head strong{font-size:17px}
+    .section-count{font-size:13px;color:var(--muted);white-space:nowrap}
+    .chev{font-size:18px;color:var(--muted);transition:transform .15s ease}
+    .section.closed .chev{transform:rotate(-90deg)}
+    .items{border-top:1px solid var(--line)}
+    .section.closed .items{display:none}
+    .item{
+      display:flex;
+      align-items:flex-start;
+      gap:12px;
+      min-height:52px;
+      padding:11px 14px;
+      border-bottom:1px solid #efede8;
+      cursor:pointer;
+    }
+    .item:last-child{border-bottom:0}
+    .item input{
+      appearance:none;
+      -webkit-appearance:none;
+      width:24px;height:24px;
+      border:2px solid #9ca29c;
+      border-radius:7px;
+      margin:0;
+      flex:0 0 24px;
+      display:grid;
+      place-items:center;
+      background:#fff;
+    }
+    .item input:checked{
+      border-color:var(--accent);
+      background:var(--accent);
+    }
+    .item input:checked::after{
+      content:"✓";
+      color:white;
+      font-weight:800;
+      font-size:17px;
+      line-height:1;
+    }
+    .item span{font-size:16px;line-height:1.35;padding-top:1px}
+    .item.done span{text-decoration:line-through;color:var(--muted)}
+    .actions{
+      position:sticky;
+      bottom:12px;
+      display:flex;
+      gap:10px;
+      margin-top:18px;
+      padding:10px;
+      border-radius:16px;
+      background:rgba(255,255,255,.92);
+      border:1px solid var(--line);
+      backdrop-filter:blur(12px);
+      box-shadow:var(--shadow);
+    }
+    button.action{
+      flex:1;
+      min-height:46px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--ink);
+      font-weight:650;
+      font-size:15px;
+    }
+    button.primary{
+      background:var(--accent);
+      border-color:var(--accent);
+      color:white;
+    }
+    .message{
+      text-align:center;
+      font-size:14px;
+      color:var(--muted);
+      min-height:20px;
+      margin:8px 0 -2px;
+    }
+    @media (max-width:460px){
+      .wrap{padding-left:10px;padding-right:10px}
+      h1{font-size:25px}
+      .actions{bottom:8px}
+    }
+    @media (prefers-reduced-motion:reduce){
+      *{scroll-behavior:auto!important;transition:none!important}
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <h1>Reiseliste</h1>
+      <div class="sub">Punkt für Punkt abhaken. Dein Stand wird auf diesem Gerät gespeichert.</div>
+    </header>
+
+    <section class="progress-card" aria-label="Fortschritt">
+      <div class="progress-row">
+        <div>
+          <div id="progressBig" class="progress-big">0 von 0 erledigt</div>
+          <div id="progressSmall" class="progress-small">0 %</div>
+        </div>
+        <div id="openCount" class="progress-small"></div>
+      </div>
+      <div class="track" aria-hidden="true"><div id="bar" class="bar"></div></div>
+    </section>
+
+    <div id="sections"></div>
+    <div id="message" class="message" aria-live="polite"></div>
+
+    <div class="actions">
+      <button id="openAll" class="action" type="button">Alle öffnen</button>
+      <button id="reset" class="action primary" type="button">Neue Reise</button>
+    </div>
+  </main>
+
+  <script>
+  (() => {
+    const LIST = [
+      { title: "Vor der Abreise / Wohnung", items: [
+        "Kaffeemaschine: Wasser leeren",
+        "Geschirr-Spüler: leer",
+        "Kühlschrank: leer",
+        "Früchteschale: leer",
+        "Brotschublade: leer",
+        "Computer: aus",
+        "Licht: aus",
+        "Abfall: rausstellen / entsorgen",
+        "Balkon: leer",
+        "Zeitung / Post: organisieren",
+        "Zahlungen: Ende Monat",
+        "Pflanzen (und Geranien) giessen: organisieren",
+        "Schlüssel für Vertretung organisieren (2 × Wohnungs-/Hausschlüssel)",
+        "Erika (Geld / Aufträge)",
+        "Rotes Kreuz und bei Ruh's abmelden"
+      ]},
+      { title: "Reiseproviant und Wasser", items: [
+        "Reiseproviant und Wasser",
+        "Trinkflaschen",
+        "Trink-Beutel 3 oder 5 Liter plus Schlauch",
+        "Thermos-Flasche",
+        "Nanna-Säckli",
+        "Kafi (Nespresso)",
+        "Messer",
+        "Gabel",
+        "Löffel",
+        "Tüten schliessen",
+        "Tupperware",
+        "Gümmeli",
+        "Lätzli",
+        "Servietten",
+        "Kühltasche",
+        "Kühlelemente",
+        "Tisch-Set Cortemilia",
+        "Cortemilia-Ordner"
+      ]},
+      { title: "Pflege / Bad", items: [
+        "Zahnbürste / Zahnpaste",
+        "Kamm",
+        "Flüssigseife",
+        "Shampoo und Conditioner: Locken oder gerade Haare",
+        "Haar-Gel",
+        "Föhn",
+        "Haarglätter",
+        "Gesichts-/Körpercreme",
+        "Handrasierer",
+        "Rasierer",
+        "Deo auch für unterwegs",
+        "Schmuck",
+        "Epilady",
+        "Klipser",
+        "Schminke"
+      ]},
+      { title: "Weitere Pflegeartikel", items: [
+        "Demaquiage",
+        "Nagellack",
+        "Watte",
+        "Nagellack-Entferner",
+        "Zahnseide",
+        "Dreck-Sack",
+        "Genie-Lavabo für Handwäsche",
+        "Türkis … Spange (handschriftlich, unklar)"
+      ]},
+      { title: "Gesundheit / Medikamente", items: [
+        "Einlagen Schuhe",
+        "Ohropax",
+        "Gleitsichtbrille",
+        "Lesebrille",
+        "Medikamenten-Box",
+        "Truxal (Reserve)",
+        "Magnesium",
+        "Optifibre",
+        "Probiotic",
+        "Pflästerli / Blasenpflaster",
+        "Skils-Bälle",
+        "Creme gegen Psoriasis",
+        "Moskito-Spray",
+        "Zecken-Spray",
+        "Zecken-Zange",
+        "Bite-away",
+        "Nastüechli",
+        "Zäpfli / Hormonersatz",
+        "Menosan"
+      ]},
+      { title: "Sonne / Wandern / Baden", items: [
+        "Sonnencreme",
+        "Apres-Soleil",
+        "Sonnenbrille",
+        "Hut: Strohhut / Piraten-Hut / schwarze Mütze / Wollmützen",
+        "Schal: Winter / Sommer",
+        "Handschuhe",
+        "Schlafsack",
+        "Gaskocher",
+        "Wanderstöcke",
+        "Wanderhose",
+        "Wanderschuhe",
+        "Ice-Breaker",
+        "Leerer Rucksack / leere Tasche",
+        "Flipflops (auch für Nassbereich)",
+        "Bauchtäschli",
+        "Bademantel",
+        "Badetuch"
+      ]},
+      { title: "Bad / Reise", items: [
+        "Frotté Tuch: gross und kleine",
+        "Frotté Waschlappen",
+        "Badehose ganz",
+        "Bikini",
+        "Regenjacke",
+        "Regenhose",
+        "Schirm",
+        "Adapter",
+        "Nackenstütze für Reise"
+      ]},
+      { title: "Dokumente / Technik / Freizeit", items: [
+        "Franken / Euro",
+        "TCS-Kärtli",
+        "Pass",
+        "Bankkärtli",
+        "IV-Bestätigung",
+        "Generalabo",
+        "Bahn-/Flugticket",
+        "Autoschlüssel",
+        "Musikbox",
+        "Kopfhörer",
+        "Aufladekabel: Musikbox / Phone / Kopfhörer",
+        "Schreibzeug",
+        "Papier",
+        "Laptop",
+        "Mal- und Kreativ-Utensilien",
+        "Wanderkarte",
+        "Strassenkarte",
+        "ETI-Ausweis",
+        "Bestätigung Reise / Hotel",
+        "Sackmesser",
+        "Taschenlampe",
+        "Spiele",
+        "Bücher",
+        "Zelt",
+        "Schlafmättli",
+        "Seidenschlafsack (für SAC)"
+      ]},
+      { title: "Kleider", items: [
+        "Unterhosen: normal, unter den Rock, schön",
+        "Bodys",
+        "BH: Sport / schön",
+        "Trägerunterleibchen",
+        "Strumpfhosen",
+        "Leggins",
+        "Dicke Socken",
+        "Socken",
+        "Gürtel",
+        "Träger-T-Shirt",
+        "T-Shirt kurzarm",
+        "T-Shirt langarm",
+        "Pulli leicht",
+        "Pulli dick",
+        "Langer Mantel (dünn)",
+        "Faserpelz",
+        "Jacke / Daunenjacke ohne Ärmel",
+        "Hängerli (schwarz)",
+        "Pyjama / Trainer / Nachthemd",
+        "Kurze und lange Hosen",
+        "Jupe und Rock",
+        "Schuhe: für Regentage, offene Schuhe, Turnschuhe, Hausschuhe"
+      ]}
+    ];
+
+    const STORAGE_KEY = "reiseliste-becca-v1";
+    const state = loadState();
+    const sectionsEl = document.getElementById("sections");
+    const messageEl = document.getElementById("message");
+    const progressBig = document.getElementById("progressBig");
+    const progressSmall = document.getElementById("progressSmall");
+    const openCount = document.getElementById("openCount");
+    const bar = document.getElementById("bar");
+
+    function loadState(){
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : { checked:{}, closed:{} };
+      } catch {
+        return { checked:{}, closed:{} };
+      }
+    }
+    function saveState(){
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+    }
+    function key(s,i){ return s + ":" + i; }
+    function totals(){
+      const total = LIST.reduce((n,s)=>n+s.items.length,0);
+      const done = Object.values(state.checked).filter(Boolean).length;
+      return {total,done};
+    }
+    function updateProgress(){
+      const {total,done}=totals();
+      const pct = total ? Math.round(done/total*100) : 0;
+      progressBig.textContent = done + " von " + total + " erledigt";
+      progressSmall.textContent = pct + " %";
+      openCount.textContent = (total-done) + " offen";
+      bar.style.width = pct + "%";
+      messageEl.textContent = done === total && total > 0 ? "Alles erledigt. Gute Reise." : "";
+    }
+
+    function render(){
+      sectionsEl.innerHTML = "";
+      LIST.forEach((section,sIndex)=>{
+        const box = document.createElement("section");
+        box.className = "section" + (state.closed[sIndex] ? " closed" : "");
+
+        const head = document.createElement("button");
+        head.type = "button";
+        head.className = "section-head";
+        head.setAttribute("aria-expanded", state.closed[sIndex] ? "false" : "true");
+
+        const left = document.createElement("strong");
+        left.textContent = section.title;
+
+        const right = document.createElement("span");
+        right.style.display="flex";
+        right.style.alignItems="center";
+        right.style.gap="9px";
+
+        const count = document.createElement("span");
+        count.className = "section-count";
+        const doneHere = section.items.reduce((n,_,i)=>n+(state.checked[key(sIndex,i)]?1:0),0);
+        count.textContent = doneHere + "/" + section.items.length;
+
+        const chev = document.createElement("span");
+        chev.className = "chev";
+        chev.textContent = "⌄";
+
+        right.append(count,chev);
+        head.append(left,right);
+
+        const items = document.createElement("div");
+        items.className = "items";
+
+        section.items.forEach((text,iIndex)=>{
+          const k = key(sIndex,iIndex);
+          const label = document.createElement("label");
+          label.className = "item" + (state.checked[k] ? " done" : "");
+
+          const input = document.createElement("input");
+          input.type = "checkbox";
+          input.checked = !!state.checked[k];
+          input.setAttribute("aria-label", text);
+
+          const span = document.createElement("span");
+          span.textContent = text;
+
+          input.addEventListener("change",()=>{
+            if(input.checked) state.checked[k]=true;
+            else delete state.checked[k];
+            label.classList.toggle("done",input.checked);
+            saveState();
+            updateProgress();
+            count.textContent = section.items.reduce((n,_,i)=>n+(state.checked[key(sIndex,i)]?1:0),0) + "/" + section.items.length;
+          });
+
+          label.append(input,span);
+          items.append(label);
+        });
+
+        head.addEventListener("click",()=>{
+          const closed = box.classList.toggle("closed");
+          state.closed[sIndex]=closed;
+          head.setAttribute("aria-expanded", closed ? "false" : "true");
+          saveState();
+        });
+
+        box.append(head,items);
+        sectionsEl.append(box);
+      });
+      updateProgress();
+    }
+
+    document.getElementById("openAll").addEventListener("click",()=>{
+      state.closed={};
+      saveState();
+      render();
+      messageEl.textContent="Alle Bereiche geöffnet.";
+    });
+
+    document.getElementById("reset").addEventListener("click",()=>{
+      if(!confirm("Alle Häkchen entfernen und eine neue Reise starten?")) return;
+      state.checked={};
+      saveState();
+      render();
+      messageEl.textContent="Neue Reise gestartet.";
+      window.scrollTo({top:0,behavior:"smooth"});
+    });
+
+    render();
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+    }
+  })();
+  </script>
+</body>
+</html>
